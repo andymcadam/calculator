@@ -9,7 +9,7 @@
 // Display geometry.
 #define DISPLAY_X 14
 #define DISPLAY_Y 18
-#define DISPLAY_WIDTH 348
+#define DISPLAY_WIDTH 335
 #define DISPLAY_HEIGHT 70
 
 // Button grid geometry.
@@ -134,11 +134,11 @@ ButtonPalette GetButtonPalette(const char* text) {
     ButtonPalette palette;
 
     if (strcmp(text, "=") == 0) {
-        palette.border = RGB(0, 70, 140);
-        palette.top = RGB(0, 120, 215);
-        palette.bottom = RGB(0, 90, 165);
-        palette.highlight = RGB(30, 150, 255);
-        palette.text = RGB(255, 255, 255);
+        palette.border = RGB(24, 73, 135);
+        palette.top = RGB(76, 154, 235);
+        palette.bottom = RGB(30, 106, 190);
+        palette.highlight = RGB(10, 82, 255);
+        palette.text = RGB(25, 25, 25);
         return palette;
     }
 
@@ -178,19 +178,31 @@ ButtonPalette GetButtonPalette(const char* text) {
     return palette;
 }
 
+// Resolve a button label from its control ID so owner-draw painting does not depend on window text retrieval.
+const char* GetButtonTextById(UINT controlId) {
+    if (controlId >= ID_BUTTON_BASE && controlId < ID_BUTTON_BASE + buttonCount) {
+        return buttons[controlId - ID_BUTTON_BASE];
+    }
+
+    if (controlId >= ID_MEMORY_BUTTON_BASE && controlId < ID_MEMORY_BUTTON_BASE + MEM_BUTTON_COUNT) {
+        return memoryButtons[controlId - ID_MEMORY_BUTTON_BASE];
+    }
+
+    return "";
+}
+
 // Paint one owner-drawn button using gradients, rounded border, and centered text.
 void DrawVistaButton(const DRAWITEMSTRUCT* drawItem) {
     RECT outerRect = drawItem->rcItem;
     RECT innerRect = outerRect;
     RECT highlightRect = outerRect;
     RECT textRect = outerRect;
-    char textBuf[16];
-    GetWindowTextA(drawItem->hwndItem, textBuf, sizeof(textBuf));
-    const char* text = textBuf;
+    const char* text = GetButtonTextById(drawItem->CtlID);
     ButtonPalette palette = GetButtonPalette(text);
     BOOL pressed = (drawItem->itemState & ODS_SELECTED) != 0;
     BOOL focused = (drawItem->itemState & ODS_FOCUS) != 0;
     HDC hdc = drawItem->hDC;
+    BOOL isEquals = strcmp(text, "=") == 0;
 
     // Pressed state flips gradient direction and nudges text down by 1px.
     if (pressed) {
@@ -202,11 +214,15 @@ void DrawVistaButton(const DRAWITEMSTRUCT* drawItem) {
     FillVerticalGradient(hdc, outerRect, palette.top, palette.bottom);
 
     InflateRectBy(&innerRect, 1, 1);
-    FillVerticalGradient(hdc, innerRect, palette.highlight, palette.top);
+    if (isEquals) {
+        FillVerticalGradient(hdc, innerRect, RGB(65, 145, 232), RGB(18, 92, 182));
+    } else {
+        FillVerticalGradient(hdc, innerRect, palette.highlight, palette.top);
 
-    highlightRect.bottom = highlightRect.top + (highlightRect.bottom - highlightRect.top) / 2;
-    InflateRectBy(&highlightRect, 2, 2);
-    FillVerticalGradient(hdc, highlightRect, RGB(255, 255, 255), palette.highlight);
+        highlightRect.bottom = highlightRect.top + (highlightRect.bottom - highlightRect.top) / 2;
+        InflateRectBy(&highlightRect, 2, 2);
+        FillVerticalGradient(hdc, highlightRect, RGB(255, 255, 255), palette.highlight);
+    }
 
     RoundRect(hdc, outerRect.left, outerRect.top, outerRect.right, outerRect.bottom, 10, 10);
 
@@ -444,10 +460,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 hWnd, (HMENU)(INT_PTR)ID_DISPLAY, NULL, NULL);
 
             // Create fonts for display text and button text.
-            hDisplayFont = CreateFontA(34, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            hDisplayFont = CreateFontA(48, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                 CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
-            hButtonFont = CreateFontA(22, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+            hButtonFont = CreateFontA(32, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                 CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
             SendMessage(hDisplay, WM_SETFONT, (WPARAM)hDisplayFont, TRUE);
