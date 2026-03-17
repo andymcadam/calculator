@@ -32,7 +32,8 @@ build.bat
 Or manually:
 
 ```cmd
-cl /O1 /Os calc.c user32.lib kernel32.lib /link /SUBSYSTEM:WINDOWS /ENTRY:WinMainCRTStartup
+rc app.rc
+cl /O1 /Os calc.c app.res user32.lib kernel32.lib /link /SUBSYSTEM:WINDOWS /ENTRY:WinMainCRTStartup
 ```
 
 ### Option 2: MinGW/GCC
@@ -44,8 +45,13 @@ build_mingw.bat
 Or manually:
 
 ```cmd
-gcc -mwindows calc.c -o calc.exe -luser32 -lkernel32 -Os -s
+windres app.rc -O coff -o app.res
+gcc -mwindows calc.c app.res -o calc.exe -luser32 -lkernel32 -Os -s
 ```
+
+## App Icon
+
+The executable icon is embedded from `app.ico` via `app.rc`.
 
 ## Usage
 

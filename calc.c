@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <string.h>
 #include <stdio.h>
+#include "resource.h"
 
 // Control IDs used by Win32 to identify UI elements in WM_COMMAND/WM_DRAWITEM.
 #define ID_DISPLAY 100
@@ -636,13 +637,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     int clientWidth = BUTTON_X + BUTTON_COLS * BUTTON_WIDTH + (BUTTON_COLS - 1) * BUTTON_GAP + CONTENT_RIGHT_PADDING;
     int clientHeight = BUTTON_Y + rows * BUTTON_HEIGHT + (rows - 1) * BUTTON_GAP + CONTENT_BOTTOM_PADDING;
     
-    WNDCLASSA wc = {0};
+    WNDCLASSEXA wc = {0};
+    wc.cbSize = sizeof(wc);
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = CLASS_NAME;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDI_APP_ICON));
+    wc.hIconSm = wc.hIcon;
     wc.hbrBackground = NULL;
-    RegisterClassA(&wc);
+    RegisterClassExA(&wc);
 
     // Convert desired client size to outer window size.
     windowRect.left = 0;
