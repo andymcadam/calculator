@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <string.h>
 #include <stdio.h>
+#include "resource.h"
 
 // Control IDs used by Win32 to identify UI elements in WM_COMMAND/WM_DRAWITEM.
 #define ID_DISPLAY 100
@@ -9,16 +10,24 @@
 // Display geometry.
 #define DISPLAY_X 14
 #define DISPLAY_Y 18
-#define DISPLAY_WIDTH 348
+#define DISPLAY_WIDTH 335
 #define DISPLAY_HEIGHT 70
 
 // Button grid geometry.
 #define BUTTON_COLS 4
 #define BUTTON_X 14
-#define BUTTON_Y 108
 #define BUTTON_WIDTH 78
 #define BUTTON_HEIGHT 58
 #define BUTTON_GAP 8
+
+// Memory button row geometry (sits above the main button grid).
+#define MEM_BUTTON_COUNT 5
+#define MEM_BUTTON_Y 108
+#define MEM_BUTTON_HEIGHT 36
+#define BUTTON_Y (MEM_BUTTON_Y + MEM_BUTTON_HEIGHT + BUTTON_GAP)
+
+// Base control ID for memory buttons.
+#define ID_MEMORY_BUTTON_BASE 2000
 
 // Extra empty space at right/bottom edge of the client area.
 #define CONTENT_RIGHT_PADDING 14
@@ -42,6 +51,9 @@ char repeatOperation = 0;
 BOOL newNumber = TRUE;
 BOOL hasRepeatOperation = FALSE;
 
+// Memory state.
+double memoryValue = 0;
+
 // Button labels in visual order (left-to-right, top-to-bottom).
 const char* buttons[] = {
     "C", "CE", "<-", "/",
@@ -52,6 +64,9 @@ const char* buttons[] = {
 };
 
 const int buttonCount = sizeof(buttons) / sizeof(buttons[0]);
+
+// Memory button labels.
+const char* memoryButtons[] = {"MC", "MR", "M+", "M-", "MS"};
 
 // Color palette used to paint one owner-drawn button.
 typedef struct ButtonPalette {
@@ -120,11 +135,21 @@ ButtonPalette GetButtonPalette(const char* text) {
     ButtonPalette palette;
 
     if (strcmp(text, "=") == 0) {
-        palette.border = RGB(112, 141, 173);
-        palette.top = RGB(255, 246, 203);
-        palette.bottom = RGB(241, 202, 101);
-        palette.highlight = RGB(255, 252, 232);
-        palette.text = RGB(74, 54, 16);
+        palette.border = RGB(24, 73, 135);
+        palette.top = RGB(76, 154, 235);
+        palette.bottom = RGB(30, 106, 190);
+        palette.highlight = RGB(10, 82, 255);
+        palette.text = RGB(25, 25, 25);
+        return palette;
+    }
+
+    if (strcmp(text, "MC") == 0 || strcmp(text, "MR") == 0 ||
+        strcmp(text, "M+") == 0 || strcmp(text, "M-") == 0 || strcmp(text, "MS") == 0) {
+        palette.border = RGB(140, 150, 170);
+        palette.top = RGB(218, 224, 236);
+        palette.bottom = RGB(188, 197, 213);
+        palette.highlight = RGB(238, 242, 250);
+        palette.text = RGB(28, 38, 60);
         return palette;
     }
 
@@ -154,17 +179,31 @@ ButtonPalette GetButtonPalette(const char* text) {
     return palette;
 }
 
+// Resolve a button label from its control ID so owner-draw painting does not depend on window text retrieval.
+const char* GetButtonTextById(UINT controlId) {
+    if (controlId >= ID_BUTTON_BASE && controlId < ID_BUTTON_BASE + buttonCount) {
+        return buttons[controlId - ID_BUTTON_BASE];
+    }
+
+    if (controlId >= ID_MEMORY_BUTTON_BASE && controlId < ID_MEMORY_BUTTON_BASE + MEM_BUTTON_COUNT) {
+        return memoryButtons[controlId - ID_MEMORY_BUTTON_BASE];
+    }
+
+    return "";
+}
+
 // Paint one owner-drawn button using gradients, rounded border, and centered text.
 void DrawVistaButton(const DRAWITEMSTRUCT* drawItem) {
     RECT outerRect = drawItem->rcItem;
     RECT innerRect = outerRect;
     RECT highlightRect = outerRect;
     RECT textRect = outerRect;
-    const char* text = buttons[drawItem->CtlID - ID_BUTTON_BASE];
+    const char* text = GetButtonTextById(drawItem->CtlID);
     ButtonPalette palette = GetButtonPalette(text);
     BOOL pressed = (drawItem->itemState & ODS_SELECTED) != 0;
     BOOL focused = (drawItem->itemState & ODS_FOCUS) != 0;
     HDC hdc = drawItem->hDC;
+    BOOL isEquals = strcmp(text, "=") == 0;
 
     // Pressed state flips gradient direction and nudges text down by 1px.
     if (pressed) {
@@ -176,11 +215,15 @@ void DrawVistaButton(const DRAWITEMSTRUCT* drawItem) {
     FillVerticalGradient(hdc, outerRect, palette.top, palette.bottom);
 
     InflateRectBy(&innerRect, 1, 1);
-    FillVerticalGradient(hdc, innerRect, palette.highlight, palette.top);
+    if (isEquals) {
+        FillVerticalGradient(hdc, innerRect, RGB(65, 145, 232), RGB(18, 92, 182));
+    } else {
+        FillVerticalGradient(hdc, innerRect, palette.highlight, palette.top);
 
-    highlightRect.bottom = highlightRect.top + (highlightRect.bottom - highlightRect.top) / 2;
-    InflateRectBy(&highlightRect, 2, 2);
-    FillVerticalGradient(hdc, highlightRect, RGB(255, 255, 255), palette.highlight);
+        highlightRect.bottom = highlightRect.top + (highlightRect.bottom - highlightRect.top) / 2;
+        InflateRectBy(&highlightRect, 2, 2);
+        FillVerticalGradient(hdc, highlightRect, RGB(255, 255, 255), palette.highlight);
+    }
 
     RoundRect(hdc, outerRect.left, outerRect.top, outerRect.right, outerRect.bottom, 10, 10);
 
@@ -316,6 +359,26 @@ void Calculate() {
     newNumber = TRUE;
 }
 
+// Handle clicks on the memory row buttons.
+void OnMemoryButtonClick(int id) {
+    int index = id - ID_MEMORY_BUTTON_BASE;
+    const char* btnText = memoryButtons[index];
+
+    if (strcmp(btnText, "MC") == 0) {
+        memoryValue = 0;
+    } else if (strcmp(btnText, "MR") == 0) {
+        currentValue = memoryValue;
+        UpdateDisplay(currentValue);
+        newNumber = TRUE;
+    } else if (strcmp(btnText, "M+") == 0) {
+        memoryValue += currentValue;
+    } else if (strcmp(btnText, "M-") == 0) {
+        memoryValue -= currentValue;
+    } else if (strcmp(btnText, "MS") == 0) {
+        memoryValue = currentValue;
+    }
+}
+
 // Central click handler for all calculator buttons.
 void OnButtonClick(int id) {
     int buttonIndex = id - ID_BUTTON_BASE;
@@ -398,10 +461,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 hWnd, (HMENU)(INT_PTR)ID_DISPLAY, NULL, NULL);
 
             // Create fonts for display text and button text.
-            hDisplayFont = CreateFontA(34, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+            hDisplayFont = CreateFontA(48, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                 CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
-            hButtonFont = CreateFontA(22, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
+            hButtonFont = CreateFontA(32, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE,
                 DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                 CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, "Segoe UI");
             SendMessage(hDisplay, WM_SETFONT, (WPARAM)hDisplayFont, TRUE);
@@ -431,6 +494,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
                     x, y, width, BUTTON_HEIGHT, hWnd, (HMENU)(INT_PTR)(ID_BUTTON_BASE + i), NULL, NULL);
             }
+
+            // Create memory buttons as a single row above the main grid.
+            {
+                int totalGridWidth = BUTTON_COLS * BUTTON_WIDTH + (BUTTON_COLS - 1) * BUTTON_GAP;
+                int memBtnW = (totalGridWidth - (MEM_BUTTON_COUNT - 1) * BUTTON_GAP) / MEM_BUTTON_COUNT;
+                for (int i = 0; i < MEM_BUTTON_COUNT; i++) {
+                    int mx = BUTTON_X + i * (memBtnW + BUTTON_GAP);
+                    CreateWindowExA(0, "BUTTON", memoryButtons[i],
+                        WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
+                        mx, MEM_BUTTON_Y, memBtnW, MEM_BUTTON_HEIGHT, hWnd,
+                        (HMENU)(INT_PTR)(ID_MEMORY_BUTTON_BASE + i), NULL, NULL);
+                }
+            }
             break;
         }
         // We paint the full background ourselves, so default erase is unnecessary.
@@ -450,7 +526,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
         // Owner-drawn button paint callback.
         case WM_DRAWITEM:
-            if (wParam >= ID_BUTTON_BASE && wParam < ID_BUTTON_BASE + buttonCount) {
+            if ((wParam >= ID_BUTTON_BASE && wParam < ID_BUTTON_BASE + buttonCount) ||
+                (wParam >= ID_MEMORY_BUTTON_BASE && wParam < ID_MEMORY_BUTTON_BASE + MEM_BUTTON_COUNT)) {
                 DrawVistaButton((const DRAWITEMSTRUCT*)lParam);
                 return TRUE;
             }
@@ -469,6 +546,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         case WM_COMMAND:
             if (LOWORD(wParam) >= ID_BUTTON_BASE && LOWORD(wParam) < ID_BUTTON_BASE + buttonCount) {
                 OnButtonClick(LOWORD(wParam));
+            } else if (LOWORD(wParam) >= ID_MEMORY_BUTTON_BASE && LOWORD(wParam) < ID_MEMORY_BUTTON_BASE + MEM_BUTTON_COUNT) {
+                OnMemoryButtonClick(LOWORD(wParam));
             }
             break;
         case WM_KEYDOWN: {
@@ -558,13 +637,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     int clientWidth = BUTTON_X + BUTTON_COLS * BUTTON_WIDTH + (BUTTON_COLS - 1) * BUTTON_GAP + CONTENT_RIGHT_PADDING;
     int clientHeight = BUTTON_Y + rows * BUTTON_HEIGHT + (rows - 1) * BUTTON_GAP + CONTENT_BOTTOM_PADDING;
     
-    WNDCLASSA wc = {0};
+    WNDCLASSEXA wc = {0};
+    wc.cbSize = sizeof(wc);
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = CLASS_NAME;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hIcon = LoadIconA(hInstance, MAKEINTRESOURCEA(IDI_APP_ICON));
+    wc.hIconSm = wc.hIcon;
     wc.hbrBackground = NULL;
-    RegisterClassA(&wc);
+    RegisterClassExA(&wc);
 
     // Convert desired client size to outer window size.
     windowRect.left = 0;
