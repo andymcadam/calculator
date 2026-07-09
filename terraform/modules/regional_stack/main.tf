@@ -289,7 +289,7 @@ resource "aws_s3_object" "frontend_assets" {
       js   = "application/javascript"
       json = "application/json"
     },
-    split(".", each.value)[length(split(".", each.value)) - 1],
+    regex("[^.]+$", each.value),
     "application/octet-stream"
   )
 }

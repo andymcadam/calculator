@@ -23,7 +23,7 @@ module "regional_primary" {
   name_prefix                  = "${local.name_prefix}-primary"
   table_name                   = module.global_data.table_name
   region                       = var.primary_region
-  cloudwatch_log_retention_days  = var.cloudwatch_log_retention_days
+  cloudwatch_log_retention_days = var.cloudwatch_log_retention_days
   lambda_source_file           = "${path.root}/../backend/lambda_function.py"
   frontend_dir                 = "${path.root}/../web"
   history_default_limit        = var.history_default_limit
@@ -40,7 +40,7 @@ module "regional_secondary" {
   name_prefix                  = "${local.name_prefix}-secondary"
   table_name                   = module.global_data.table_name
   region                       = var.secondary_region
-  cloudwatch_log_retention_days  = var.cloudwatch_log_retention_days
+  cloudwatch_log_retention_days = var.cloudwatch_log_retention_days
   lambda_source_file           = "${path.root}/../backend/lambda_function.py"
   frontend_dir                 = "${path.root}/../web"
   history_default_limit        = var.history_default_limit
