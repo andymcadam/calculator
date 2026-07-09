@@ -34,7 +34,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ],
-        Resource = "*"
+        Resource = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.name_prefix}-api:*"
       },
       {
         Sid    = "DynamoDBAccess",
@@ -43,7 +43,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "dynamodb:PutItem",
           "dynamodb:Query"
         ],
-        Resource = "*"
+        Resource = "arn:aws:dynamodb:${var.region}:${data.aws_caller_identity.current.account_id}:table/${var.table_name}"
       }
     ]
   })

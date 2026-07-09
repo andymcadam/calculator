@@ -4,10 +4,10 @@ This repository now includes an AWS-native web implementation of the calculator 
 
 ## What was added
 
-- Browser frontend: `/home/runner/work/calculator/calculator/web`
-- Lambda backend API: `/home/runner/work/calculator/calculator/backend/lambda_function.py`
-- Terraform IaC: `/home/runner/work/calculator/calculator/terraform`
-- GitHub Actions workflows: `/home/runner/work/calculator/calculator/.github/workflows`
+- Browser frontend: `web/`
+- Lambda backend API: `backend/lambda_function.py`
+- Terraform IaC: `terraform/`
+- GitHub Actions workflows: `.github/workflows/`
 
 ## Architecture
 
@@ -58,7 +58,7 @@ Health endpoint used by Route53 checks.
 ### Example usage
 
 ```bash
-cd /home/runner/work/calculator/calculator/terraform
+cd terraform
 terraform init
 terraform plan \
   -var="route53_zone_id=Z123456789" \

@@ -30,10 +30,10 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform init
-        run: terraform -chdir=/home/runner/work/calculator/calculator/terraform init
+        run: terraform -chdir=terraform init
 
       - name: Terraform plan
-        run: terraform -chdir=/home/runner/work/calculator/calculator/terraform plan -var="environment=${{ inputs.environment }}"
+        run: terraform -chdir=terraform plan -var="environment=${{ inputs.environment }}"
 
       - name: Terraform apply
-        run: terraform -chdir=/home/runner/work/calculator/calculator/terraform apply -auto-approve -var="environment=${{ inputs.environment }}"
+        run: terraform -chdir=terraform apply -auto-approve -var="environment=${{ inputs.environment }}"
