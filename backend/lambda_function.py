@@ -142,6 +142,7 @@ def _decimal_to_value(value: Decimal) -> str:
     return format(normalized, "f")
 
 def _get_table():
+    """Return a cached DynamoDB table client, creating it on first use."""
     global _table
     if _table is None:
         _dynamodb = boto3.resource("dynamodb")
