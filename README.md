@@ -79,3 +79,13 @@ Keyboard shortcuts:
 
 - Windows XP and later
 - x86 and x64 compatible
+
+## AWS-native web version
+
+This repository now also contains an AWS-native browser-based version of the calculator:
+
+- Frontend: `/home/runner/work/calculator/calculator/web`
+- Backend (AWS Lambda API): `/home/runner/work/calculator/calculator/backend`
+- Infrastructure as Code (Terraform): `/home/runner/work/calculator/calculator/terraform`
+- Deployment and CI workflows: `/home/runner/work/calculator/calculator/.github/workflows`
+- Architecture and deployment documentation: `/home/runner/work/calculator/calculator/docs/aws-web-migration.md`
