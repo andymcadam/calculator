@@ -19,8 +19,7 @@ TABLE_NAME = os.environ.get("TABLE_NAME", "calculator-history")
 DEFAULT_LIMIT = int(os.environ.get("DEFAULT_HISTORY_LIMIT", "50"))
 MAX_LIMIT = int(os.environ.get("MAX_HISTORY_LIMIT", "500"))
 
-_dynamodb = boto3.resource("dynamodb")
-_table = _dynamodb.Table(TABLE_NAME)
+_table = None
 
 _ALLOWED_BINARY_OPS = {
     ast.Add: lambda a, b: a + b,
@@ -142,6 +141,13 @@ def _decimal_to_value(value: Decimal) -> str:
     normalized = value.normalize() if value != 0 else Decimal("0")
     return format(normalized, "f")
 
+def _get_table():
+    global _table
+    if _table is None:
+        _dynamodb = boto3.resource("dynamodb")
+        _table = _dynamodb.Table(TABLE_NAME)
+    return _table
+
 
 def _log(level: str, payload: Dict[str, Any]) -> None:
     record = json.dumps(payload, default=str)
@@ -176,7 +182,7 @@ def handle_calculate(event: Dict[str, Any], req_id: str) -> Dict[str, Any]:
         "result": result,
         "requestId": req_id,
     }
-    _table.put_item(Item=item)
+    _get_table().put_item(Item=item)
 
     _log(
         "info",
@@ -227,7 +233,7 @@ def handle_history(event: Dict[str, Any], req_id: str) -> Dict[str, Any]:
     if start and end:
         query_args["FilterExpression"] = Attr("timestamp").between(start, end)
 
-    response = _table.query(**query_args)
+    response = _get_table().query(**query_args)
 
     items: List[Dict[str, Any]] = []
     for item in response.get("Items", []):
