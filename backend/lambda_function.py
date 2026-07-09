@@ -141,6 +141,7 @@ def _decimal_to_value(value: Decimal) -> str:
     normalized = value.normalize() if value != 0 else Decimal("0")
     return format(normalized, "f")
 
+
 def _get_table():
     """Return a cached DynamoDB table client, creating it on first use."""
     global _table
@@ -303,7 +304,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             },
         )
         return _json_response(400, {"error": str(exc), "requestId": req_id})
-    except Exception as exc:  # nosec B110
+    except Exception as exc:  # nosec B110 - return controlled JSON error instead of uncaught Lambda failure output.
         _log(
             "error",
             {
